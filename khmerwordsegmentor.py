@@ -74,5 +74,26 @@ class KhmerWordSegmentor(object):
 
         return postprocess(pred,skcc,seg_sep)
 
+    def segment_text_to_arr(self, str, model='lstm'):
+        words = []
+        for sen in str.split("\n"):
+            if sen.strip() == "":
+                words.append("\n")
+                continue
+            # sen = cleanup_str(sen)
+            sen = sen.replace(u'\u200b','')
+            kccs = seg_kcc(sen)
+            features=create_kcc_features(kccs)
+            prediction = self.crfModel.predict([features])
 
+            word = ""
+            for i, p in enumerate(prediction[0]):
+                if p == "1":
+                    words.append(word)
+                    word = kccs[i]
+                else:
+                    word += kccs[i]
 
+            words.append(word)
+            words.append("\n")
+        return words
