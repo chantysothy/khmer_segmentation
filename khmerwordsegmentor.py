@@ -1,5 +1,5 @@
-import torch 
-from utils import preprocess 
+import torch
+from utils import preprocess
 from utils import postprocess
 import wget
 import os
@@ -20,9 +20,6 @@ def segment_crf(input_str, model_path='sklearn_crf_model_90k-100i.sav',seg_sep =
     ts = cleanup_str(input_str)
     kccs = seg_kcc(ts)
     features = create_kcc_features(kccs)
-    if not os.path.isfile(model_path):
-        url = r'https://media.githubusercontent.com/media/rinabuoy/KhmerNLP/master/assets/sklearn_crf_model_90k-100i.sav'
-        wget.download(url)
     loaded_model = pickle.load(open(model_path, 'rb'))
     preds = loaded_model.predict([features])[0]
     preds = [float(p) for p in preds]
@@ -35,11 +32,8 @@ def segment_blstm(input_str, model_path='word_segmentation_model.pt',seg_sep = '
     #use_gpu = False
     if(use_gpu):
         print('Inference on GPU!')
-    else: 
+    else:
         print('No GPU available, inference using CPU')
-    if not os.path.isfile(model_path):
-        url = r'https://media.githubusercontent.com/media/rinabuoy/KhmerNLP/master/assets/word_segmentation_model.pt'
-        wget.download(url)
     if(use_gpu):
         model = torch.load(model_path)
     else:
@@ -47,7 +41,7 @@ def segment_blstm(input_str, model_path='word_segmentation_model.pt',seg_sep = '
     model.eval()
     x,skcc = preprocess(input_str,model)
     inputs = torch.tensor(x).unsqueeze(0).long()
-                
+
     if(use_gpu):
         inputs = inputs.cuda()
     h = model.init_hidden(1)
