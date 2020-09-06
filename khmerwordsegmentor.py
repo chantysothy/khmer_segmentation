@@ -75,12 +75,58 @@ class KhmerWordSegmentor(object):
         return postprocess(pred,skcc,seg_sep)
 
     def segment_text_to_arr(self, str, model='lstm'):
+        if model == 'lstm':
+            return self.lstm_text_to_arr(str)
+        return self.crf_text_to_arr(str)
+
+    def lstm_text_to_arr(self, str):
         words = []
         for sen in str.split("\n"):
             if sen.strip() == "":
                 words.append("\n")
                 continue
-            # sen = cleanup_str(sen)
+
+            sen = sen.replace(u'\u200b','')
+            skcc = seg_kcc(sen)
+            x = [self.bilstmModel.kccs2int[c] if c in self.bilstmModel.kccs2int else 1 for c in skcc]
+
+            inputs = torch.tensor(x).unsqueeze(0).long()
+
+            if(self.use_gpu):
+                inputs = inputs.cuda()
+            h = self.bilstmModel.init_hidden(1)
+            val_h = tuple([each.data for each in h])
+            # get the output from the model
+            prediction, _ = self.bilstmModel(inputs, val_h)
+            if(not self.use_gpu):
+                prediction = prediction.cpu() # move to cpu
+
+            prediction = torch.sigmoid(prediction)
+
+            prediction[prediction<0.5] = 0.
+            prediction[prediction>=0.5] = 1.
+            tkcc = []
+            for k in skcc:
+                tkcc.append(k)
+
+            word = ""
+            for i, p in enumerate(prediction):
+                if p == 1.:
+                    words.append(word)
+                    word = tkcc[i]
+                else:
+                  word += tkcc[i]
+
+            words.append(word)
+            words.append("\n")
+        return words
+
+    def crf_text_to_arr(self, str):
+        words = []
+        for sen in str.split("\n"):
+            if sen.strip() == "":
+                words.append("\n")
+                continue
             sen = sen.replace(u'\u200b','')
             kccs = seg_kcc(sen)
             features=create_kcc_features(kccs)
